@@ -1,38 +1,60 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"path/filepath"
+	"sort"
 	"strconv"
+
+	"github.com/erutherford/coding-advent-2020/pkg/fileutils"
 )
 
-const separator = "\n"
+/**
+  Without Sorting and Exiting Early
+  combinations seen: 7068
+  2020/12/13 22:02:04 indexes are: 35, 103
+  2020/12/13 22:02:04 values are: 399, 1621
+  2020/12/13 22:02:04 product is: 646779
+  combinations seen: 2220360
+  2020/12/13 22:02:04 indexes are: 56, 70, 187
+  2020/12/13 22:02:04 values are: 591, 1021, 408
+  2020/12/13 22:02:04 product is: 246191688
+*/
 
-func GetInputData(inputPath string) ([]int64, error) {
-	fileContents, err := ioutil.ReadFile(inputPath)
+/**
+  WIth Sorting and Exiting Early
+  combinations seen: 274
+  2020/12/13 22:04:38 indexes are: 1, 108
+  2020/12/13 22:04:38 values are: 399, 1621
+  2020/12/13 22:04:38 product is: 646779
+  combinations seen: 1411
+  2020/12/13 22:04:38 indexes are: 2, 6, 11
+  2020/12/13 22:04:38 values are: 408, 591, 1021
+  2020/12/13 22:04:38 product is: 246191688
+*/
+
+type entries []int64
+
+func (e entries) Len() int           { return len(e) }
+func (e entries) Swap(i, j int)      { e[i], e[j] = e[j], e[i] }
+func (e entries) Less(i, j int) bool { return e[i] < e[j] }
+
+func getInputData(inputPath string) (entries, error) {
+	lines, err := fileutils.ReadLinesFromFile(inputPath)
 	if err != nil {
-		fileErr := fmt.Errorf("error reading file: %#v", err)
-		log.Println(fileErr)
-		return nil, fileErr
+		return nil, fmt.Errorf("error reading file: %w", err)
 	}
 
 	var input []int64
-	splitContents := bytes.Split(fileContents, []byte(separator))
-	for _, m := range splitContents {
-		massStr := string(m[:])
-
-		mass, err := strconv.ParseInt(massStr, 10, 64)
+	for _, line := range lines {
+		lineEntry, err := strconv.ParseInt(line, 10, 64)
 		if err != nil {
-			massErr := fmt.Errorf("error converting to int: %w", err)
-			log.Println(massErr)
-			return nil, massErr
+			return nil, fmt.Errorf("error parsing int from line: %w", err)
 		}
 
-		input = append(input, mass)
+		input = append(input, lineEntry)
 	}
 
 	return input, nil
@@ -44,10 +66,11 @@ func main() {
 	flag.Parse()
 
 	path := filepath.Clean(*inputPath)
-	input, err := GetInputData(path)
+	input, err := getInputData(path)
 	if err != nil {
 		log.Fatalf("error occurred getting input data: %#v", err)
 	}
+	sort.Sort(input)
 
 	idxOne, idxTwo := findTwoEntriesWithSum(input)
 
@@ -63,10 +86,20 @@ func main() {
 }
 
 func findTwoEntriesWithSum(entries []int64) (int, int) {
-	for pIdx, pEntry := range entries {
-		for sIdx, sEntry := range entries {
-			if pEntry+sEntry == 2020 {
-				return pIdx, sIdx
+	combinationsSeen := 0
+	for firstIdx, firstEntry := range entries {
+		for secondIdx, secondEntry := range entries {
+			if firstIdx == secondIdx {
+				continue
+			}
+			combinationsSeen += 1
+			if firstEntry+secondEntry > 2020 {
+				break
+			}
+
+			if firstEntry+secondEntry == 2020 {
+				fmt.Printf("combinations seen: %d\n", combinationsSeen)
+				return firstIdx, secondIdx
 			}
 		}
 	}
@@ -74,11 +107,29 @@ func findTwoEntriesWithSum(entries []int64) (int, int) {
 }
 
 func findThreeEntriesWithSum(entries []int64) (int, int, int) {
-	for pIdx, pEntry := range entries {
-		for sIdx, sEntry := range entries {
-			for tIdx, tEntry := range entries {
-				if pEntry+sEntry+tEntry == 2020 {
-					return pIdx, sIdx, tIdx
+	combinationsSeen := 0
+	for firstIdx, firstEntry := range entries {
+		for secondIdx, secondEntry := range entries {
+			if secondIdx == firstIdx {
+				continue
+			}
+			if firstEntry+secondEntry > 2020 {
+				break
+			}
+
+			for thirdIdx, thirdEntry := range entries {
+				if thirdEntry == firstEntry || thirdEntry == secondEntry {
+					continue
+				}
+				combinationsSeen += 1
+
+				if firstEntry+secondEntry+thirdEntry > 2020 {
+					break
+				}
+
+				if firstEntry+secondEntry+thirdEntry == 2020 {
+					fmt.Printf("combinations seen: %d\n", combinationsSeen)
+					return firstIdx, secondIdx, thirdIdx
 				}
 			}
 		}
